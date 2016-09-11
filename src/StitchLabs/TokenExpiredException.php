@@ -2,4 +2,4 @@
 
 namespace StitchLabs;
 
-class TokenExpiredException extends InfusionsoftException {}
+class TokenExpiredException extends StitchLabsException {}

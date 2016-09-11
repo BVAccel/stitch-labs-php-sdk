@@ -16,7 +16,7 @@ class StitchLabs
     /**
      * @var string URI a user visits to authorize an access token
      */
-    protected $authUri = 'https://api-pub.stitchlabs.com/authorize';
+    protected $authURI = 'https://api-pub.stitchlabs.com/authorize';
 
     /**
      * @var string URI used to request an access token
@@ -39,6 +39,26 @@ class StitchLabs
     protected $redirectUri;
 
     /**
+     * @var array Cache for services so they aren't created multiple times
+     */
+    protected $apis = array();
+
+     /**
+     * @var string
+     */
+    protected $token;
+
+    /**
+     * @var Http\ClientInterface
+     */
+    protected $httpClient;
+
+    /**
+     * @var \Psr\Log\LoggerInterface
+     */
+    protected $httpLogAdapter;
+
+    /**
      * @var boolean Determines if API calls should be logged
      */
     protected $debug = false;
@@ -46,14 +66,15 @@ class StitchLabs
     /**
      * @param array $config
      */
-    public function __construct($config = array())
-    {
+    public function __construct($config = array()) {
+        $this->clientId = getenv('STITCHLABS_CLIENT_ID');
+        $this->clientSecret = getenv('STITCHLABS_CLIENT_SECRET');
+        $this->redirectUri = getenv('STITCHLABS_REDIRECT_URL');
+        $this->debug = getenv('STITCHLABS_DEBUG');
+
         if (isset($config['clientId'])) $this->clientId = $config['clientId'];
-
         if (isset($config['clientSecret'])) $this->clientSecret = $config['clientSecret'];
-
         if (isset($config['redirectUri'])) $this->redirectUri = $config['redirectUri'];
-
         if (isset($config['debug'])) $this->debug = $config['debug'];
     }
 
@@ -172,10 +193,11 @@ class StitchLabs
     public function getAuthorizationUrl()
     {
         $params = array(
+            'response_type' => 'code',
+            'scope' => '',
             'client_id' => $this->clientId,
             'redirect_uri' => $this->redirectUri,
-            'response_type' => 'code',
-            'scope' => 'full'
+            'state' => rand()
         );
 
         return $this->authURI . '?' . http_build_query($params);
@@ -323,16 +345,26 @@ class StitchLabs
      */
     public function restfulRequest($method, $url, $params = array())
     {
+        $url = $this->baseURI . $url;
         // Before making the request, we can make sure that the token is still
         // valid by doing a check on the end of life.
         $token = $this->getToken();
-        if ($this->isTokenExpired())
-        {
-            throw new TokenExpiredException;
-        }
+        // if ($this->isTokenExpired())
+        // {
+        //     throw new TokenExpiredException;
+        // }
 
         $client = $this->getHttpClient();
         $full_params = [];
+
+        if (strtolower($method) === 'get')
+        {
+            $url = $url . '?' . http_build_query($params);
+        }
+        else
+        {
+            $full_params['body'] = json_encode($params);
+        }
 
         $full_params['headers'] = array(
             'Content-Type'  => 'application/json',
@@ -352,5 +384,33 @@ class StitchLabs
         $this->debug = (bool)$debug;
 
         return $this;
+    }
+
+    /**
+     * @param string $api
+     * @return mixed
+     */
+    public function contacts($api = 'rest')
+    {
+        return $this->getRestApi('ContactsService');
+    }
+
+    /**
+     * Returns the requested class name, optionally using a cached array so no
+     * object is instantiated more than once during a request.
+     *
+     * @param string $class
+     * @return mixed
+     */
+    public function getRestApi($class)
+    {
+        $class = '\StitchLabs\Api\\' . $class;
+
+        if ( ! array_key_exists($class, $this->apis))
+        {
+            $this->apis[$class] = new $class($this);
+        }
+
+        return $this->apis[$class];
     }
 }
