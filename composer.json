@@ -1,5 +1,5 @@
 {
-    "name": "ajohnson6494/stitch-labs-php-sdk",
+    "name": "rocket-code-hq/stitch-labs-php-sdk",
     "description": "PHP SDK for Stitch Labs",
     "keywords": [
         "stitch labs",
@@ -7,6 +7,10 @@
     ],
     "license": "MIT",
     "authors": [
+        {
+          "name": "Tony Santucci",
+          "email" : "santucci@rocketcode.io"
+        },
         {
             "name": "Andrew Johnson",
             "email": "ajohnson6494@gmail.com"
